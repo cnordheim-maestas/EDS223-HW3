@@ -1,0 +1,26 @@
+---
+title: "Homework Assignment 2: Identifying the impacts of extreme weather"
+author: "Caitlin Nordheim-Maestas"
+date: "`r Sys.Date()`"
+format: html
+---
+
+<https://eds-223-geospatial.github.io/assignments/HW3.html>
+
+# Setup
+
+```{r}
+#| message: false
+#| warning: false
+
+library(tidyverse) # data wrangling
+library(sf) # for spatial data
+library(tmap) # for pretty maps
+library(here) # file pathing
+library(viridisLite) # colors
+library(janitor) # data wrangling
+library(kableExtra) # pretty table
+library(patchwork) # combine plots
+
+# load in data 
+```
