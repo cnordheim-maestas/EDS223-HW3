@@ -7,7 +7,7 @@ format: html
 
 <https://eds-223-geospatial.github.io/assignments/HW3.html>
 
-# Setup
+# 0. Setup
 
 ```{r}
 #| message: false
@@ -21,6 +21,73 @@ library(viridisLite) # colors
 library(janitor) # data wrangling
 library(kableExtra) # pretty table
 library(patchwork) # combine plots
+library(stars)
+library(terra)
 
 # load in data 
+# alan VNP46A1 folder
+# ##make sure you upload the CORRECT FILE!!! EASY MISTAKE TO MAKE
+## There will be some work we need to do to this data like rescaling
+
+## read_stars for the raster data!!!
+
+tile5_2.7.2010 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
+               quiet = TRUE) # hide the message
+
+## update
+tile5_2.7.2010 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
+               quiet = TRUE) # hide the message
+
+## update
+tile5_2.7.2010 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
+               quiet = TRUE) # hide the message
+
+## update
+tile5_2.7.2010 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
+               quiet = TRUE) # hide the message
+
+# read it back to a rast by wrapping your object around a rast rast(stars_object)
+
+# roads: gis_osm_roads_free_1.gpkg
+
+road <- st_read(here::here("data", "gis_osm_roads_free_1.gpkg"),
+              quiet = TRUE) # hide the message
+
+# houses: gis_osm_buildings_a_free_1.gpkg
+
+house <- st_read(here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
+              quiet = TRUE) # hide the message
+
+# Socioeconomic: folder ACS_2019_5YR_TRACT_48.gdb is an ArcGIS “file geodatabase”, a multi-file proprietary format that’s roughly analogous to a GeoPackage file
+## use st_layers() to explore the contents of the geodatabase
+
+
 ```
+
+Clean and prep datasets
+
+```{r}
+# Make sure to check that these datasets have the same coordinate reference systems! If not, transform them to match.
+```
+
+To complete complete the tasks of this assignment, you will need to break your analysis into the following key steps:
+
+1. find locations that experienced a blackout by creating a mask
+2. exclude highways from analysis
+3. identify homes that experienced blackouts by combining the locations of homes and blackouts
+4. identify the census tracts likely impacted by blackout
+
+Tip: For improved computational efficiency and easier interoperability with sf, I recommend using the stars package for raster handling.
+
+Tip: "Find the change" means do subtraction! Value for the 7th and value of 16th day.
+
+# 1. Create blackout mask
+
+# 2. Exclude highways from the cropped blackout mask
+
+Tip: st_disjoin
+
+# 3. Identify the number of homes likely impacted by blackouts
+
+
+
