@@ -9,6 +9,8 @@ format: html
 
 # 0. Setup
 
+## 0.1 read in data
+
 ```{r}
 #| message: false
 #| warning: false
@@ -25,49 +27,221 @@ library(stars)
 library(terra)
 
 # load in data 
-# alan VNP46A1 folder
-# ##make sure you upload the CORRECT FILE!!! EASY MISTAKE TO MAKE
-## There will be some work we need to do to this data like rescaling
 
+#..........................Night lights..........................
+## There will be some work we need to do to this data like rescaling according to Ale
 ## read_stars for the raster data!!!
+# can later read it back to a rast by wrapping your object around a rast rast(stars_object)
 
-tile5_2.7.2010 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
+# tile 5 date 1
+tile5_2.7 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
                quiet = TRUE) # hide the message
 
-## update
-tile5_2.7.2010 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
+# tile 6 date 1
+tile6_2.7 <- read_stars(here::here("data","VNP46A1","VNP46A1.A2021038.h08v06.001.2021039064329.tif"),
                quiet = TRUE) # hide the message
 
-## update
-tile5_2.7.2010 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
+# tile 5 date 2
+tile5_2.16 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021047.h08v05.001.2021048091106.tif"),
                quiet = TRUE) # hide the message
 
-## update
-tile5_2.7.2010 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
+# tile 6 date 2
+tile6_2.16 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021047.h08v06.001.2021048091105.tif"),
                quiet = TRUE) # hide the message
 
-# read it back to a rast by wrapping your object around a rast rast(stars_object)
+#..............................Roads.............................
 
 # roads: gis_osm_roads_free_1.gpkg
-
 road <- st_read(here::here("data", "gis_osm_roads_free_1.gpkg"),
-              quiet = TRUE) # hide the message
+                # from homework tip, only load needed data
+                query = "SELECT * FROM gis_osm_roads_free_1 WHERE fclass='motorway'", 
+              quiet = TRUE) %>% # hide the message
+  st_make_valid() 
 
-# houses: gis_osm_buildings_a_free_1.gpkg
+#.............................Houses.............................
 
 house <- st_read(here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
-              quiet = TRUE) # hide the message
+                 # use SQL query to only read in data we need (given in the hw instructions)
+                 #The buildings geopackage includes data on many types of buildings; 
+                 #we can avoid reading in data we don’t need:
+                 query = "SELECT *
+                          FROM gis_osm_buildings_a_free_1 
+                          WHERE (type IS NULL AND name IS NULL)
+                          OR type in ('residential', 'apartments', 'house', 'static_caravan', 'detached')", 
+              quiet = TRUE) %>% 
+               st_make_valid()
+
+#..........................Socioeconomic.........................
 
 # Socioeconomic: folder ACS_2019_5YR_TRACT_48.gdb is an ArcGIS “file geodatabase”, a multi-file proprietary format that’s roughly analogous to a GeoPackage file
-## use st_layers() to explore the contents of the geodatabase
 
+## use st_layers() to explore the contents of the geodatabase
+# st_layers(here::here("data","ACS_2019_5YR_TRACT_48_TEXAS.gdb")) # takes a whole to run, long output, commented out
+# important finds: X19_INCOME, TRACT_METADATA_2019, ACS_2019_5YR_TRACT_48_TEXAS
+
+# geography layer
+geo_layer <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
+              layer = "ACS_2019_5YR_TRACT_48_TEXAS",
+               quiet = TRUE) %>% 
+               st_make_valid()
+
+# income layer
+income <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
+              layer = "X19_INCOME",
+               quiet = TRUE)
+
+# metadata (colnames)
+meta <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
+              layer = "TRACT_METADATA_2019",
+               quiet = TRUE)
+
+#plot(st_geometry(geo_layer))
+# Hint: You have to combine the geometry with the attributes to get a feature layer that sf can use. I will do this in section 0.2
 
 ```
 
-Clean and prep datasets
+## 0.2 Let's explore the data
+
+### Light at night explore & wrangle
+
+These are raster files that show the light at night to explore the power outages. There are 2 "tiles" that encompass Houston, so I will combine those tiles to end up with `day1` and `day2` rasters for the whole Houston area.
+
+A note about the rasters, I used `stars` to read in the data, but some things we learned in `terra`, so I may wrap the object in the `terra::rast` to make a terra object to explore it using terra functions like we used in class. 
+
+This data also needs to be scaled according to the metadata, so I will be multiplying everything by 0.001 using `terra::app`.
+
+```{r}
+# alan
+# make terra objects
+t5d1 <- terra::rast(tile5_2.7)
+t6d1 <- terra::rast(tile6_2.7)
+t5d2 <- terra::rast(tile5_2.16)
+t6d2 <- terra::rast(tile6_2.16)
+
+# Merge the tiles to have one Houston file per day
+alan_d1 <- merge(t5d1, t6d1) # day 1
+alan_d2 <- merge(t5d2, t6d2) # day 2
+
+# do the 2 extents match?
+if(ext(alan_d1) == ext(alan_d2)){
+  print("extents match")
+} else{
+  print("extents do not match")
+} # "extents match" yay
+
+# check crs
+st_crs(alan_d1) # WGS84
+st_crs(alan_d2) # WGS84
+
+# correct the data scale factor
+# according to Suomi-NPP VIIRS Surface Reflectance User’s Guide table 3, we need to apply the scale factor
+# sf = 0.001
+
+scale_factor <- 0.001
+
+# make a function to multiply by scale and add the offset
+scale_function <- function(x) {
+  x * scale_factor
+}
+
+# apply the function
+alan_d1s <- terra::app(alan_d1, fun = scale_function)
+alan_d2s <- terra::app(alan_d2, fun = scale_function)
+
+# any NA's? let's sum together the na's
+global(is.na(alan_d1s), "sum", na.rm = TRUE) # 0 NA's
+global(is.na(alan_d2s), "sum", na.rm = TRUE) # 0 NA's
+
+# summary stats, use global to avoid taking a subsample
+global(alan_d1s, fun = "min", na.rm = TRUE) # 0
+global(alan_d1s, fun = "max", na.rm = TRUE) # 65.535
+global(alan_d2s, fun = "min", na.rm = TRUE) # 0
+global(alan_d2s, fun = "max", na.rm = TRUE) # 65.535
+
+# quick look
+plot(alan_d1s) # check it out
+plot(alan_d2s) # check it out
+
+# struggling with the downsampling in tmap, not showing high values
+m1 <- tm_shape(alan_d1s) + # scaled dataset
+  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
+  tm_graticules()+ # orienting
+  tm_title(text = "day 1") # title
+
+m2 <- tm_shape(alan_d2s) + # scaled dataset
+ tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
+  tm_graticules()+ # orienting
+  tm_title(text = "day 2") # title
+
+tmap_arrange(m1, m2, nrow = 1)
+```
+
+### roads explore & wrangle
+
+This is a sf dataframe with lines of roads that intersect the Houston metropolitan area
+
+```{r}
+# road
+class(road) # make sure it is an "sf" "data.frame"
+colnames(road) # for fun what kind of data do we have here
+unique(st_is_valid(road)) # true
+unique(st_geometry_type(road)) # lines
+st_crs(road) # check crs: WGS 84 
+
+# exploratory vis
+tm_shape(road) +
+  tm_basemap("OpenStreetMap") + # orient
+  tm_graticules()+ # orient
+  tm_lines(col = "blue") + # my layer, make sure it is LINES
+  tm_title("Exploratory map of Roads (roads in blue)") # title
+```
+
+### house explore & wrangle
+
+This is a sf dataframe with polygons of houses in the Houston area
+
+```{r}
+# house
+class(house) # make sure it is an "sf" "data.frame"
+colnames(house) # for fun what kind of data do we have here
+unique(st_is_valid(house)) # true, good
+unique(st_geometry_type(house)) # multipolygon
+
+# exploratory vis
+house_exploratory <- tm_shape(house) +
+  tm_basemap("OpenStreetMap") + # orient
+  tm_graticules()+ # orient
+  tm_polygons(col = "blue") + # my layer, make sure it is polygons
+  tm_title("Exploratory map of house (layer in blue)") # title
+
+house_exploratory 
+```
+
+
+### socioeconomic explore & wrangle
+
+I have 2 data objects that I will need to explore and merge here: `geo_layer` and `income`! My overarching goal is to make one sf dataframe with geographic data and income data for each row. 
+
+
+```{r}
+
+```
+
+
+Now that all the data are read in, time to clean and prep datasets
+
+
 
 ```{r}
 # Make sure to check that these datasets have the same coordinate reference systems! If not, transform them to match.
+
+# alan
+
+# roads
+st_crs(road) # WGS84; "EPSG" 4326
+
+# house
+st_crs(house) # WGS84; "EPSG" 4326
 ```
 
 To complete complete the tasks of this assignment, you will need to break your analysis into the following key steps:
@@ -83,11 +257,153 @@ Tip: "Find the change" means do subtraction! Value for the 7th and value of 16th
 
 # 1. Create blackout mask
 
+Mask example
+
+## 1.2 difference raster
+
+find the change in night lights intensity (presumably) caused by the storm
+hint: this will require creating a raster object for each day (2021-02-07 and 2021-02-16)
+
+```{r}
+# subtraction "difference raster"
+## check same extent first
+
+```
+
+
+# 1.2 reclassify difference
+
+reclassify the difference raster, assuming that any location that experienced a drop of more than 200 nW cm-2sr-1 experienced a blackout
+
+```{r}
+# see below for example mask
+
+# rmask <- zion_elevation
+
+```
+
+assign NA to all locations that experienced a drop of less than 200 nW cm-2sr-1 change
+
+## 1.3 NA to small drops
+
+```{r}
+# # set all cells with elevation less than 2000 meters to NA
+# rmask[rmask < 2000] <- NA
+# 
+# # approach 1: bracket subsetting
+# masked1 <- zion_elevation[rmask, drop = FALSE]   
+# # approach 2: mask() function
+# masked2 <- mask(zion_elevation, rmask)  
+```
+
+## 1.4 vectorize the blackout mask
+
+vectorize the blackout mask
+hint: use st_as_sf() to convert from a raster to a vector and fix any invalid geometries with st_make_valid()
+
+```{r}
+
+```
+
+## 1.5 crop blackout mask
+
+crop (spatially subset) the blackout mask to the Houston area as defined by the following coordinates:
+(-96.5, 29), (-96.5, 30.5), (-94.5, 30.5), (-94.5, 29)
+
+```{r}
+
+```
+
+## 1.6 re-project cropped dataset
+
+re-project the cropped blackout dataset to EPSG:3083 (NAD83 / Texas Centric Albers Equal Area)
+
+```{r}
+
+```
+
+
 # 2. Exclude highways from the cropped blackout mask
 
 Tip: st_disjoin
 
+excluded any locations within 200 meters of all highways in the Houston area
+
+## 2.1 id close to highway
+
+identify areas within 200m of all highways
+hint: you may need to use st_union
+
+## 2.2 blackouts AND away from highway
+
+find areas that experienced blackouts that are further than 200m from a highway
+
+```{r}
+
+```
+
+
 # 3. Identify the number of homes likely impacted by blackouts
+
+## 3.1 id overlap
+
+identify homes that overlap with areas that experienced blackouts
+
+```{r}
+
+```
+
+
+# 4. Identify the census tracts likely impacted by blackout
+
+```{r}
+
+```
+
+
+# 5. Outputs
+
+## 5.1
+
+a set of maps comparing night light intensities before and after the first two storms
+a map of the homes in Houston that lost power
+
+```{r}
+
+```
+
+
+## 5.2
+an estimate of the number of homes in Houston that lost power
+
+```{r}
+
+```
+
+
+## 5.3
+a map of the census tracts in Houston that lost power
+
+```{r}
+
+```
+
+
+## 5.4
+a plot comparing the distributions of median household income for census tracts that did and did not experience blackouts
+
+```{r}
+
+```
+
+
+## 5.5
+a brief reflection (approx. 100 words) summarizing your results and discussing any limitations to this study
+
+
+
+
+
 
 
 
