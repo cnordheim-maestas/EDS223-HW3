@@ -23,15 +23,15 @@ library(viridisLite) # colors
 library(janitor) # data wrangling
 library(kableExtra) # pretty table
 library(patchwork) # combine plots
-library(stars)
-library(terra)
+library(stars) # rasters
+library(terra) # rasters
 
 # load in data 
 
 #..........................Night lights..........................
-## There will be some work we need to do to this data like rescaling according to Ale
 ## read_stars for the raster data!!!
 # can later read it back to a rast by wrapping your object around a rast rast(stars_object)
+## VIIRS data
 
 # tile 5 date 1
 tile5_2.7 <- read_stars(here::here("data","VNP46A1", "VNP46A1.A2021038.h08v05.001.2021039064328.tif"),
@@ -62,8 +62,8 @@ road <- st_read(here::here("data", "gis_osm_roads_free_1.gpkg"),
 
 house <- st_read(here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
                  # use SQL query to only read in data we need (given in the hw instructions)
-                 #The buildings geopackage includes data on many types of buildings; 
-                 #we can avoid reading in data we don’t need:
+                 # The buildings geopackage includes data on many types of buildings; 
+                 # we can avoid reading in data we don’t need:
                  query = "SELECT *
                           FROM gis_osm_buildings_a_free_1 
                           WHERE (type IS NULL AND name IS NULL)
@@ -75,27 +75,26 @@ house <- st_read(here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
 
 # Socioeconomic: folder ACS_2019_5YR_TRACT_48.gdb is an ArcGIS “file geodatabase”, a multi-file proprietary format that’s roughly analogous to a GeoPackage file
 
-## use st_layers() to explore the contents of the geodatabase
+## use st_layers() to explore the contents of the geodatabase, because geodatabases has layers
 # st_layers(here::here("data","ACS_2019_5YR_TRACT_48_TEXAS.gdb")) # takes a whole to run, long output, commented out
 # important finds: X19_INCOME, TRACT_METADATA_2019, ACS_2019_5YR_TRACT_48_TEXAS
 
 # geography layer
 geo_layer <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
-              layer = "ACS_2019_5YR_TRACT_48_TEXAS",
+              layer = "ACS_2019_5YR_TRACT_48_TEXAS", # specify the layer to read in
                quiet = TRUE) %>% 
                st_make_valid()
 
 # income layer
 income <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
-              layer = "X19_INCOME",
+              layer = "X19_INCOME", # specify the layer to read in for income (from exploration)
                quiet = TRUE)
 
 # metadata (colnames)
 meta <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
-              layer = "TRACT_METADATA_2019",
+              layer = "TRACT_METADATA_2019", # specify the layer to read in for income (from exploration)
                quiet = TRUE)
 
-#plot(st_geometry(geo_layer))
 # Hint: You have to combine the geometry with the attributes to get a feature layer that sf can use. I will do this in section 0.2
 
 ```
@@ -110,8 +109,9 @@ A note about the rasters, I used `stars` to read in the data, but some things we
 
 This data also needs to be scaled according to the metadata, so I will be multiplying everything by 0.001 using `terra::app`.
 
+First lets combine
+
 ```{r}
-# alan
 # make terra objects
 t5d1 <- terra::rast(tile5_2.7)
 t6d1 <- terra::rast(tile6_2.7)
@@ -132,7 +132,20 @@ if(ext(alan_d1) == ext(alan_d2)){
 # check crs
 st_crs(alan_d1) # WGS84
 st_crs(alan_d2) # WGS84
+```
 
+Try sf `st_mosaic` method instead
+
+```{r}
+# tile5_2.7
+# tile6_2.7
+# tile5_2.16
+# tile6_2.16
+```
+
+
+```{r}
+# alan
 # correct the data scale factor
 # according to Suomi-NPP VIIRS Surface Reflectance User’s Guide table 3, we need to apply the scale factor
 # sf = 0.001
@@ -222,8 +235,19 @@ house_exploratory
 
 I have 2 data objects that I will need to explore and merge here: `geo_layer` and `income`! My overarching goal is to make one sf dataframe with geographic data and income data for each row. 
 
+We will join on the geo_id
+
+`left_join` instead of `st_join` because income is not spatially enabled using `st_transform`?
+
+
+
 
 ```{r}
+# left join
+
+# ensure same crs
+
+
 
 ```
 
@@ -257,16 +281,20 @@ Tip: "Find the change" means do subtraction! Value for the 7th and value of 16th
 
 # 1. Create blackout mask
 
-Mask example
+
 
 ## 1.2 difference raster
 
 find the change in night lights intensity (presumably) caused by the storm
-hint: this will require creating a raster object for each day (2021-02-07 and 2021-02-16)
+hint: this will require creating a raster object for each day (2021-02-07 and 2021-02-16) (done above)
+
+feb 7 (no blackout aka more light) - feb 16 (blackout) > 200 (phrase as "a loss" but not neg values)
 
 ```{r}
 # subtraction "difference raster"
 ## check same extent first
+
+
 
 ```
 
@@ -286,7 +314,10 @@ assign NA to all locations that experienced a drop of less than 200 nW cm-2sr-1 
 
 ## 1.3 NA to small drops
 
+Ale talked about making a conditional (true false) first then do the mask but dont have to do that
+
 ```{r}
+## example from Zion lab
 # # set all cells with elevation less than 2000 meters to NA
 # rmask[rmask < 2000] <- NA
 # 
@@ -299,19 +330,25 @@ assign NA to all locations that experienced a drop of less than 200 nW cm-2sr-1 
 ## 1.4 vectorize the blackout mask
 
 vectorize the blackout mask
-hint: use st_as_sf() to convert from a raster to a vector and fix any invalid geometries with st_make_valid()
+hint: use `st_as_sf()` to convert from a raster to a vector and fix any invalid geometries with `st_make_valid()`
 
 ```{r}
 
 ```
+
+Now we have a vector difference mask!
 
 ## 1.5 crop blackout mask
 
 crop (spatially subset) the blackout mask to the Houston area as defined by the following coordinates:
 (-96.5, 29), (-96.5, 30.5), (-94.5, 30.5), (-94.5, 29)
 
-```{r}
+`st_bbox` or `st_points`
 
+Remember, st_bbox needs to be converted (vectorize) into layers with `st_as_sf`
+
+```{r}
+# st_bbox in the projection we are about to use in next step EPSG:3083
 ```
 
 ## 1.6 re-project cropped dataset
@@ -319,7 +356,7 @@ crop (spatially subset) the blackout mask to the Houston area as defined by the 
 re-project the cropped blackout dataset to EPSG:3083 (NAD83 / Texas Centric Albers Equal Area)
 
 ```{r}
-
+# st_transform
 ```
 
 
@@ -327,16 +364,33 @@ re-project the cropped blackout dataset to EPSG:3083 (NAD83 / Texas Centric Albe
 
 Tip: st_disjoin
 
-excluded any locations within 200 meters of all highways in the Houston area
+exclude any locations within 200 meters of all highways in the Houston area
+
+Lab notes: whats the difference between `st_disjoint` and `st_difference`? 
 
 ## 2.1 id close to highway
 
 identify areas within 200m of all highways
-hint: you may need to use st_union
+hint: you may need to use `st_union`
+
+Lab notes: `st_buffer` to get within 200m (remember to check units! Is it in meters? km? `st_crs$units`)
+
+```{r}
+
+```
+
+next turn the highways and buffers into one with `st_union`
+
+```{r}
+
+```
+
 
 ## 2.2 blackouts AND away from highway
 
 find areas that experienced blackouts that are further than 200m from a highway
+
+We want things OUTSIDE the buffer layer, so use `st_disjoin` (or maybe `st_difference`, this will be like st_intersection which will return the areas that do not intersect. make sure to look at output). 
 
 ```{r}
 
@@ -349,24 +403,50 @@ find areas that experienced blackouts that are further than 200m from a highway
 
 identify homes that overlap with areas that experienced blackouts
 
+overlapped with areas that are non-highway and experienced a blackout (most recent object). We want to use `st_within`  if we want to only include homes that were entirely blacked out. `st_intersect` will allow partially in the blackout to be included too. 
+
 ```{r}
+# check crs, match most previous one
+
+# overlap it
+
 
 ```
 
 
 # 4. Identify the census tracts likely impacted by blackout
 
+Join socioeconomic with houses 
+
+Next we need to join the building data and socioecon data using `st_within` or similar to ensure we know which houses in the socioecon are impacted by blackout
+
 ```{r}
+
+# id which homes experience blackouts
 
 ```
 
+Now we do data wrangling to summarize median income by census tract
+
+```{r}
+# data wrangling
+
+# did not experience blackouts: find that data
+```
+
+Now build pretty plot
+
+a plot comparing the distributions of median household income for census tracts that did and did not experience blackouts
+
+```{r}
+
+```
 
 # 5. Outputs
 
 ## 5.1
 
 a set of maps comparing night light intensities before and after the first two storms
-a map of the homes in Houston that lost power
 
 ```{r}
 
@@ -374,12 +454,17 @@ a map of the homes in Houston that lost power
 
 
 ## 5.2
-an estimate of the number of homes in Houston that lost power
+a map of the homes in Houston that lost power (map)
 
 ```{r}
 
 ```
 
+an estimate of the number of homes in Houston that lost power (number)
+
+```{r}
+
+```
 
 ## 5.3
 a map of the census tracts in Houston that lost power
