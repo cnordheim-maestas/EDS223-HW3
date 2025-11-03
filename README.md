@@ -18,16 +18,20 @@ Note: this data is in my .gitignore, so it is not available in the repository. H
 
 ### OpenStreetMap roads
 
-Note: this data is in my .gitignore, so it is not available in the repository. This data was obtained using `Geofabrik` which extracts dat afrom OpenStreetMap. 
+Note: this data is in my .gitignore, so it is not available in the repository. This data was obtained using `Geofabrik`, which extracts data from OpenStreetMap. It contains data from the Houston Metropolitan area. 
 
 ### OpenStreetMap houses
 
+Note: this data is in my .gitignore, so it is not available in the repository. This data was obtained using `Geofabrik`, which extracts data from OpenStreetMap. It contains data from the Houston Metropolitan area. 
+
 ### ACS
+
+Note: this data is in my .gitignore, so it is not available in the repository. This is 2019 Census data from the U.S. Census Bureau’s American Community Survey, filtered in the workflow for specific layers, like the geographic data layer `ACS_2019_5YR_TRACT_48_TEXAS` and the income data layer `INCOME_X19` and the metadata layer. 
 
 
 ## Authors and contributors
 
-I will be the sole author and contributor to this homework assignment. The assignment was written by Ruth Oliver and Annie Adams.
+I am the sole author and contributor to this homework assignment. The assignment was written by Ruth Oliver and Annie Adams.
 
 ## References
 
@@ -35,11 +39,15 @@ I will be the sole author and contributor to this homework assignment. The assig
 
 ### NASA VIIRS
 
+NASA VIIRS (Visible Infrared Imaging Radiometer Suite) Data 2021. Distributed through NASA Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). https://ladsweb.modaps.eosdis.nasa.gov/
+
 ### OpenStreetMap
 
 This OpenStreetMap data used in this project is made available under the Open Database License: http://opendatacommons.org/licenses/odbl/1.0/. Any rights in individual contents of the database are licensed under the Database Contents License: http://opendatacommons.org/licenses/dbcl/1.0/
 
 ### ACS
+
+U.S. Census Bureau, 2019 Census. Accessed via <https://www.census.gov/programs-surveys/acs>. 
 
 
 # Repository structure
