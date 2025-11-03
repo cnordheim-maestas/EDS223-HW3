@@ -82,13 +82,13 @@ house <- st_read(here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
 # geography layer
 geo_layer <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
               layer = "ACS_2019_5YR_TRACT_48_TEXAS", # specify the layer to read in
-               quiet = TRUE) %>% 
+               quiet = TRUE) %>% # no long message
                st_make_valid()
 
 # income layer
 income <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
               layer = "X19_INCOME", # specify the layer to read in for income (from exploration)
-               quiet = TRUE)
+               quiet = TRUE) # no long message
 
 # metadata (colnames)
 meta <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
@@ -134,7 +134,7 @@ st_crs(alan_d1) # WGS84
 st_crs(alan_d2) # WGS84
 ```
 
-Try sf `st_mosaic` method instead
+Try sf `st_mosaic` method instead if it crashes
 
 ```{r}
 # tile5_2.7
