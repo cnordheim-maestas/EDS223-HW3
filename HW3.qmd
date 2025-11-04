@@ -101,7 +101,7 @@ meta <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
 
 ## 0.2 Let's explore the data
 
-### Light at night explore & wrangle
+### ALAN explore & wrangle
 
 These are raster files that show the light at night to explore the power outages. There are 2 "tiles" that encompass Houston, so I will combine those tiles to end up with `day1` and `day2` rasters for the whole Houston area.
 
@@ -110,23 +110,16 @@ A note about the rasters, I used `stars` to read in the data, so I will use `st_
 *This data also needs to be scaled according to the metadata, but in office hours, it seems like that should be done after masking?*
 
 ```{r}
-# day 1 raster: combine tiles 5 and 6
+# day 1 raster: combine tiles 5 and 6 for the 7th
 d1_stars <- st_mosaic(tile5_2.7, tile6_2.7)
-# day 1 raster: combine tiles 5 and 6
+# day 2 raster: combine tiles 5 and 6 for the 16th
 d2_stars <- st_mosaic(tile5_2.16, tile6_2.16)
 
-# do the 2 extents match?
-if(ext(alan_d1) == ext(alan_d2)){
-  print("extents match")
-} else{
-  print("extents do not match")
-} # "extents match" yay
-
 # check crs
-st_crs(alan_d1) # WGS84
-st_crs(alan_d2) # WGS84
+# st_crs(d1_stars) # WGS84
+# st_crs(d2_stars) # WGS84
 
-# quick vis
+# quick vis, commented out bc exploratory
 # m1 <- tm_shape(d1_stars) + 
 #   tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
 #   tm_graticules()+ # orienting
@@ -136,53 +129,6 @@ st_crs(alan_d2) # WGS84
 #  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
 #   tm_graticules()+ # orienting
 #   tm_title(text = "day 2 stars") # title
-# 
-# tmap_arrange(m1, m2, nrow = 1)
-```
-
-Scale factor
-
-```{r}
-# alan
-# correct the data scale factor
-# according to Suomi-NPP VIIRS Surface Reflectance User’s Guide table 3, we need to apply the scale factor
-# sf = 0.001
-
-# scale_factor <- 0.001
-# 
-# # make a function to multiply by scale and add the offset
-# scale_function <- function(x) {
-#   x * scale_factor
-# }
-# 
-# # apply the function
-# alan_d1s <- st_apply(d1_stars, MARGIN = c(1, 2), FUN = scale_function)
-# alan_d2s <- st_apply(d2_stars, MARGIN = c(1, 2), FUN = scale_function)
-# 
-# # any NA's? let's sum together the na's
-# global(is.na(alan_d1s), "sum", na.rm = TRUE) # 0 NA's
-# global(is.na(alan_d2s), "sum", na.rm = TRUE) # 0 NA's
-# 
-# # summary stats, use global to avoid taking a subsample
-# global(alan_d1s, fun = "min", na.rm = TRUE) # 0
-# global(alan_d1s, fun = "max", na.rm = TRUE) # 65.535
-# global(alan_d2s, fun = "min", na.rm = TRUE) # 0
-# global(alan_d2s, fun = "max", na.rm = TRUE) # 65.535
-# 
-# # quick look
-# plot(alan_d1s) # check it out
-# plot(alan_d2s) # check it out
-# 
-# # struggling with the downsampling in tmap, not showing high values
-# m1 <- tm_shape(alan_d1s) + # scaled dataset
-#   tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
-#   tm_graticules()+ # orienting
-#   tm_title(text = "day 1") # title
-# 
-# m2 <- tm_shape(alan_d2s) + # scaled dataset
-#  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
-#   tm_graticules()+ # orienting
-#   tm_title(text = "day 2") # title
 # 
 # tmap_arrange(m1, m2, nrow = 1)
 ```
@@ -200,11 +146,11 @@ unique(st_geometry_type(road)) # lines
 st_crs(road) # check crs: WGS 84 
 
 # exploratory vis
-tm_shape(road) +
-  tm_basemap("OpenStreetMap") + # orient
-  tm_graticules()+ # orient
-  tm_lines(col = "blue") + # my layer, make sure it is LINES
-  tm_title("Exploratory map of Roads (roads in blue)") # title
+# tm_shape(road) +
+#   tm_basemap("OpenStreetMap") + # orient
+#   tm_graticules()+ # orient
+#   tm_lines(col = "blue") + # my layer, make sure it is LINES
+#   tm_title("Exploratory map of Roads (roads in blue)") # title
 ```
 
 ### house explore & wrangle
@@ -219,13 +165,13 @@ unique(st_is_valid(house)) # true, good
 unique(st_geometry_type(house)) # multipolygon
 
 # exploratory vis
-house_exploratory <- tm_shape(house) +
-  tm_basemap("OpenStreetMap") + # orient
-  tm_graticules()+ # orient
-  tm_polygons(col = "blue") + # my layer, make sure it is polygons
-  tm_title("Exploratory map of house (layer in blue)") # title
-
-house_exploratory 
+# house_exploratory <- tm_shape(house) +
+#   tm_basemap("OpenStreetMap") + # orient
+#   tm_graticules()+ # orient
+#   tm_polygons(col = "blue") + # my layer, make sure it is polygons
+#   tm_title("Exploratory map of house (layer in blue)") # title
+# 
+# house_exploratory 
 ```
 
 
@@ -252,22 +198,22 @@ We will join on the geo_id
 ```
 
 
-Now that all the data are read in, time to clean and prep datasets
+## 0.3 crs check to start
 
-
+Let's ensure everything is in the same CRS and what CRS we are in to start
 
 ```{r}
 # Make sure to check that these datasets have the same coordinate reference systems! If not, transform them to match.
 
 # alan
-st_crs(d1_stars) # "EPSG",4326
-st_crs(d2_stars) # "EPSG",4326
+# st_crs(d1_stars) # "EPSG",4326
+# st_crs(d2_stars) # "EPSG",4326
 
 # roads
-st_crs(road) # WGS84; "EPSG" 4326
+# st_crs(road) # WGS84; "EPSG" 4326
 
 # house
-st_crs(house) # WGS84; "EPSG" 4326
+# st_crs(house) # WGS84; "EPSG" 4326
 ```
 
 To complete complete the tasks of this assignment, you will need to break your analysis into the following key steps:
@@ -277,76 +223,62 @@ To complete complete the tasks of this assignment, you will need to break your a
 3. identify homes that experienced blackouts by combining the locations of homes and blackouts
 4. identify the census tracts likely impacted by blackout
 
-Tip: For improved computational efficiency and easier interoperability with sf, I recommend using the stars package for raster handling.
-
-Tip: "Find the change" means do subtraction! Value for the 7th and value of 16th day.
-
 # 1. Create blackout mask
-
-
 
 ## 1.1 difference raster
 
-find the change in night lights intensity (presumably) caused by the storm
-hint: this will require creating a raster object for each day (2021-02-07 and 2021-02-16) (done above)
+I want to find the change in night lights intensity (presumably) caused by the storm. *Above in the data exploration and cleaning phase, I made a single raster for each day using `st_mosaic`.* 
 
-feb 7 (no blackout aka more light) - feb 16 (blackout) > 200 (phrase as "a loss" but not neg values)
+To find the change, I will do subtraction: Feb 7 (no blackout aka more light) - Feb 16 (blackout). I want where the difference is greater than 200, so the values > 200 = TRUE for a blackout.
+
+Then I will reclassify the difference raster, assuming that any location that experienced a drop of more than 200 nW cm-2sr-1 experienced a blackout. So a TRUE is a blackout, a NA is not a blackout. 
 
 ```{r}
-# check extent
+# first check extent (need same extent to do raster math)
 st_bbox(d1_stars)
 st_bbox(d2_stars) # yay same
 
 # subtraction "difference raster" and the boolean TRUE FALSE for > 200
 diff_stars <- d1_stars - d2_stars > 200
 
-# quick vis
-# tm_shape(diff_stars) + 
-#  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
-#   tm_graticules()+ # orienting
-#   tm_title(text = "difference with boolean") # title
-```
-# 1.2 reclassify difference
-
-reclassify the difference raster, assuming that any location that experienced a drop of more than 200 nW cm-2sr-1 experienced a blackout
-
-```{r}
-# make an object to mask
+# set the False (less than 200 difference) to NA
 diff_stars[diff_stars==FALSE] <- NA
 
-# check it out
+# check it out, commented out since it is exploratory
 # tm_shape(diff_stars) + 
 #  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
 #   tm_graticules()+ # orienting
 #   tm_title(text = "UNSCALED diff > 200") # title
 ```
 
-## 1.3 vectorize the blackout mask
 
-vectorize the blackout mask
-hint: use `st_as_sf()` to convert from a raster to a vector and fix any invalid geometries with `st_make_valid()`
+## 1.2 vectorize the blackout mask
+
+I want to vectorize this mask, so turn it from a raster into a vector. I will use `st_as_sf()` to convert from a raster to a vector and then I will  fix any invalid geometries with `st_make_valid()`. I can check validity using `st_is_valid`. 
 
 ```{r}
+# vectorize and make valid
 diff_v <- st_as_sf(diff_stars) %>% 
   st_make_valid()
 
-unique(st_is_valid(diff_v))
+unique(st_is_valid(diff_v)) # check it is valid
+
+# quick exploration
 class(diff_v) # woohoo, its an sf dataframe
-st_crs(diff_v) # "EPSG",4326 still, good
+# st_crs(diff_v) # "EPSG",4326 still, good
 ```
 
 Now we have a vector difference mask!
 
-## 1.5 crop blackout mask
+## 1.3 crop blackout mask
 
-crop (spatially subset) the blackout mask to the Houston area as defined by the following coordinates:
+Nest, we will crop (spatially subset) the blackout mask to the Houston area as defined by the following coordinates:
 (-96.5, 29), (-96.5, 30.5), (-94.5, 30.5), (-94.5, 29)
 
-`st_bbox` or `st_points`
-
-Remember, st_bbox needs to be converted (vectorize) into layers with `st_as_sf`.
+Note: st_bbox needs to be converted (vectorized) into layer
 
 ```{r}
+# make a bbox with the min and max from the coordinates
 crop_bbox <- st_bbox(c(
   xmin = -96.5,
   ymin = 29,
@@ -354,14 +286,18 @@ crop_bbox <- st_bbox(c(
   ymax = 30.5),
   crs = st_crs(diff_v))
 
-class(crop_bbox) # bbox
+# check the class of the bbox
+class(crop_bbox) # it's bbox
+
+# convert into a layer
 crop <- st_as_sfc(crop_bbox) # gotta make it a layer
-class(crop)
+class(crop) # yay now an sf
 
 # check extent
-st_bbox(crop) # woohoo
+st_bbox(crop) # woohoo, matches the coords i wanted
 
-# quick vis
+# quick vis, commented out for Ale's sanity
+# allows me to visually check it is in the right spot in the world
 # tm_shape(crop) +
 #  tm_borders(col = "red")+ # use color legend
 #   tm_graticules()+ # orienting
@@ -371,28 +307,28 @@ st_bbox(crop) # woohoo
 # gonna use brackets to subset
 diff_crop <- diff_v[crop, ] # keep all rows that spatially intersect with the crop  
 # check extent
-st_bbox(diff_crop) # pretty darn close, I'll take it
+st_bbox(diff_crop) # sweet
 
-# quick vis
+# quick vis, commented out for Ale's sanity
+# also allows me to visually check it is in the right spot in the world
 # tm_shape(diff_crop) +
 #   tm_polygons(col= "red") +
 #   tm_basemap("OpenStreetMap") +
 #   tm_graticules() + 
-#   tm_title("cropped blackout mask quick vis")
+#   tm_title("cropped blackout mask quick vis") # yay in Houston
 ```
 
-## 1.6 re-project cropped dataset
+## 1.4 re-project cropped dataset
 
-re-project the cropped blackout dataset to EPSG:3083 (NAD83 / Texas Centric Albers Equal Area)
+Now let's re-project the cropped blackout dataset to EPSG:3083 (NAD83 / Texas Centric Albers Equal Area)
 
 ```{r}
-# st_transform
-
+# use st_transform
 diff_crop <- diff_crop %>% 
   st_transform("EPSG:3083")
 
-st_crs(diff_crop) # EPSG:3083 yay!
-
+# double check it changed the crs
+# st_crs(diff_crop) # EPSG:3083 yay!
 ```
 
 
