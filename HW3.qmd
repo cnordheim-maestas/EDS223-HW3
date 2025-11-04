@@ -387,6 +387,12 @@ re-project the cropped blackout dataset to EPSG:3083 (NAD83 / Texas Centric Albe
 
 ```{r}
 # st_transform
+
+diff_crop <- diff_crop %>% 
+  st_transform("EPSG:3083")
+
+st_crs(diff_crop) # EPSG:3083 yay!
+
 ```
 
 
