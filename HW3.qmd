@@ -105,22 +105,15 @@ meta <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
 
 These are raster files that show the light at night to explore the power outages. There are 2 "tiles" that encompass Houston, so I will combine those tiles to end up with `day1` and `day2` rasters for the whole Houston area.
 
-A note about the rasters, I used `stars` to read in the data, but some things we learned in `terra`, so I may wrap the object in the `terra::rast` to make a terra object to explore it using terra functions like we used in class. 
+A note about the rasters, I used `stars` to read in the data, so I will use `st_mosaic` to combine the rasters which are stars objects.
 
-This data also needs to be scaled according to the metadata, so I will be multiplying everything by 0.001 using `terra::app`.
-
-First lets combine
+*This data also needs to be scaled according to the metadata, but in office hours, it seems like that should be done after masking?*
 
 ```{r}
-# make terra objects
-t5d1 <- terra::rast(tile5_2.7)
-t6d1 <- terra::rast(tile6_2.7)
-t5d2 <- terra::rast(tile5_2.16)
-t6d2 <- terra::rast(tile6_2.16)
-
-# Merge the tiles to have one Houston file per day
-alan_d1 <- merge(t5d1, t6d1) # day 1
-alan_d2 <- merge(t5d2, t6d2) # day 2
+# day 1 raster: combine tiles 5 and 6
+d1_stars <- st_mosaic(tile5_2.7, tile6_2.7)
+# day 1 raster: combine tiles 5 and 6
+d2_stars <- st_mosaic(tile5_2.16, tile6_2.16)
 
 # do the 2 extents match?
 if(ext(alan_d1) == ext(alan_d2)){
@@ -132,17 +125,22 @@ if(ext(alan_d1) == ext(alan_d2)){
 # check crs
 st_crs(alan_d1) # WGS84
 st_crs(alan_d2) # WGS84
+
+# quick vis
+# m1 <- tm_shape(d1_stars) + 
+#   tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
+#   tm_graticules()+ # orienting
+#   tm_title(text = "day 1 stars") # title
+# 
+# m2 <- tm_shape(d2_stars) + 
+#  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
+#   tm_graticules()+ # orienting
+#   tm_title(text = "day 2 stars") # title
+# 
+# tmap_arrange(m1, m2, nrow = 1)
 ```
 
-Try sf `st_mosaic` method instead if it crashes
-
-```{r}
-# tile5_2.7
-# tile6_2.7
-# tile5_2.16
-# tile6_2.16
-```
-
+Scale factor
 
 ```{r}
 # alan
@@ -150,43 +148,43 @@ Try sf `st_mosaic` method instead if it crashes
 # according to Suomi-NPP VIIRS Surface Reflectance User’s Guide table 3, we need to apply the scale factor
 # sf = 0.001
 
-scale_factor <- 0.001
-
-# make a function to multiply by scale and add the offset
-scale_function <- function(x) {
-  x * scale_factor
-}
-
-# apply the function
-alan_d1s <- terra::app(alan_d1, fun = scale_function)
-alan_d2s <- terra::app(alan_d2, fun = scale_function)
-
-# any NA's? let's sum together the na's
-global(is.na(alan_d1s), "sum", na.rm = TRUE) # 0 NA's
-global(is.na(alan_d2s), "sum", na.rm = TRUE) # 0 NA's
-
-# summary stats, use global to avoid taking a subsample
-global(alan_d1s, fun = "min", na.rm = TRUE) # 0
-global(alan_d1s, fun = "max", na.rm = TRUE) # 65.535
-global(alan_d2s, fun = "min", na.rm = TRUE) # 0
-global(alan_d2s, fun = "max", na.rm = TRUE) # 65.535
-
-# quick look
-plot(alan_d1s) # check it out
-plot(alan_d2s) # check it out
-
-# struggling with the downsampling in tmap, not showing high values
-m1 <- tm_shape(alan_d1s) + # scaled dataset
-  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
-  tm_graticules()+ # orienting
-  tm_title(text = "day 1") # title
-
-m2 <- tm_shape(alan_d2s) + # scaled dataset
- tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
-  tm_graticules()+ # orienting
-  tm_title(text = "day 2") # title
-
-tmap_arrange(m1, m2, nrow = 1)
+# scale_factor <- 0.001
+# 
+# # make a function to multiply by scale and add the offset
+# scale_function <- function(x) {
+#   x * scale_factor
+# }
+# 
+# # apply the function
+# alan_d1s <- st_apply(d1_stars, MARGIN = c(1, 2), FUN = scale_function)
+# alan_d2s <- st_apply(d2_stars, MARGIN = c(1, 2), FUN = scale_function)
+# 
+# # any NA's? let's sum together the na's
+# global(is.na(alan_d1s), "sum", na.rm = TRUE) # 0 NA's
+# global(is.na(alan_d2s), "sum", na.rm = TRUE) # 0 NA's
+# 
+# # summary stats, use global to avoid taking a subsample
+# global(alan_d1s, fun = "min", na.rm = TRUE) # 0
+# global(alan_d1s, fun = "max", na.rm = TRUE) # 65.535
+# global(alan_d2s, fun = "min", na.rm = TRUE) # 0
+# global(alan_d2s, fun = "max", na.rm = TRUE) # 65.535
+# 
+# # quick look
+# plot(alan_d1s) # check it out
+# plot(alan_d2s) # check it out
+# 
+# # struggling with the downsampling in tmap, not showing high values
+# m1 <- tm_shape(alan_d1s) + # scaled dataset
+#   tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
+#   tm_graticules()+ # orienting
+#   tm_title(text = "day 1") # title
+# 
+# m2 <- tm_shape(alan_d2s) + # scaled dataset
+#  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
+#   tm_graticules()+ # orienting
+#   tm_title(text = "day 2") # title
+# 
+# tmap_arrange(m1, m2, nrow = 1)
 ```
 
 ### roads explore & wrangle
@@ -245,6 +243,8 @@ We will join on the geo_id
 ```{r}
 # left join
 
+
+
 # ensure same crs
 
 
@@ -260,6 +260,8 @@ Now that all the data are read in, time to clean and prep datasets
 # Make sure to check that these datasets have the same coordinate reference systems! If not, transform them to match.
 
 # alan
+st_crs(d1_stars) # "EPSG",4326
+st_crs(d2_stars) # "EPSG",4326
 
 # roads
 st_crs(road) # WGS84; "EPSG" 4326
@@ -283,7 +285,7 @@ Tip: "Find the change" means do subtraction! Value for the 7th and value of 16th
 
 
 
-## 1.2 difference raster
+## 1.1 difference raster
 
 find the change in night lights intensity (presumably) caused by the storm
 hint: this will require creating a raster object for each day (2021-02-07 and 2021-02-16) (done above)
@@ -291,49 +293,46 @@ hint: this will require creating a raster object for each day (2021-02-07 and 20
 feb 7 (no blackout aka more light) - feb 16 (blackout) > 200 (phrase as "a loss" but not neg values)
 
 ```{r}
-# subtraction "difference raster"
-## check same extent first
+# check extent
+st_bbox(d1_stars)
+st_bbox(d2_stars) # yay same
 
+# subtraction "difference raster" and the boolean TRUE FALSE for > 200
+diff_stars <- d1_stars - d2_stars > 200
 
-
+# quick vis
+# tm_shape(diff_stars) + 
+#  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
+#   tm_graticules()+ # orienting
+#   tm_title(text = "difference with boolean") # title
 ```
-
-
 # 1.2 reclassify difference
 
 reclassify the difference raster, assuming that any location that experienced a drop of more than 200 nW cm-2sr-1 experienced a blackout
 
 ```{r}
-# see below for example mask
+# make an object to mask
+diff_stars[diff_stars==FALSE] <- NA
 
-# rmask <- zion_elevation
-
+# check it out
+# tm_shape(diff_stars) + 
+#  tm_raster(col.legend = tm_legend(title = "ALAN"))+ # use color legend
+#   tm_graticules()+ # orienting
+#   tm_title(text = "UNSCALED diff > 200") # title
 ```
 
-assign NA to all locations that experienced a drop of less than 200 nW cm-2sr-1 change
-
-## 1.3 NA to small drops
-
-Ale talked about making a conditional (true false) first then do the mask but dont have to do that
-
-```{r}
-## example from Zion lab
-# # set all cells with elevation less than 2000 meters to NA
-# rmask[rmask < 2000] <- NA
-# 
-# # approach 1: bracket subsetting
-# masked1 <- zion_elevation[rmask, drop = FALSE]   
-# # approach 2: mask() function
-# masked2 <- mask(zion_elevation, rmask)  
-```
-
-## 1.4 vectorize the blackout mask
+## 1.3 vectorize the blackout mask
 
 vectorize the blackout mask
 hint: use `st_as_sf()` to convert from a raster to a vector and fix any invalid geometries with `st_make_valid()`
 
 ```{r}
+diff_v <- st_as_sf(diff_stars) %>% 
+  st_make_valid()
 
+unique(st_is_valid(diff_v))
+class(diff_v) # woohoo, its an sf dataframe
+st_crs(diff_v) # "EPSG",4326 still, good
 ```
 
 Now we have a vector difference mask!
@@ -345,10 +344,41 @@ crop (spatially subset) the blackout mask to the Houston area as defined by the 
 
 `st_bbox` or `st_points`
 
-Remember, st_bbox needs to be converted (vectorize) into layers with `st_as_sf`
+Remember, st_bbox needs to be converted (vectorize) into layers with `st_as_sf`.
 
 ```{r}
-# st_bbox in the projection we are about to use in next step EPSG:3083
+crop_bbox <- st_bbox(c(
+  xmin = -96.5,
+  ymin = 29,
+  xmax = -94.5,
+  ymax = 30.5),
+  crs = st_crs(diff_v))
+
+class(crop_bbox) # bbox
+crop <- st_as_sfc(crop_bbox) # gotta make it a layer
+class(crop)
+
+# check extent
+st_bbox(crop) # woohoo
+
+# quick vis
+# tm_shape(crop) +
+#  tm_borders(col = "red")+ # use color legend
+#   tm_graticules()+ # orienting
+#   tm_title(text = "crop") # title
+
+## now crop the actual blackout mask
+# gonna use brackets to subset
+diff_crop <- diff_v[crop, ] # keep all rows that spatially intersect with the crop  
+# check extent
+st_bbox(diff_crop) # pretty darn close, I'll take it
+
+# quick vis
+# tm_shape(diff_crop) +
+#   tm_polygons(col= "red") +
+#   tm_basemap("OpenStreetMap") +
+#   tm_graticules() + 
+#   tm_title("cropped blackout mask quick vis")
 ```
 
 ## 1.6 re-project cropped dataset
