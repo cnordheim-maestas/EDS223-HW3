@@ -83,17 +83,21 @@ house <- st_read(here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
 geo_layer <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
               layer = "ACS_2019_5YR_TRACT_48_TEXAS", # specify the layer to read in
                quiet = TRUE) %>% # no long message
-               st_make_valid()
+               st_make_valid() %>% # valid geometry
+              dplyr::select(GEOID_Data, Shape) %>% # keep only needed columns
+              rename(GEOID = GEOID_Data) # name to match colname in income
 
 # income layer
 income <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
               layer = "X19_INCOME", # specify the layer to read in for income (from exploration)
-               quiet = TRUE) # no long message
+               quiet = TRUE)  # no long message
 
 # metadata (colnames)
 meta <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"),
               layer = "TRACT_METADATA_2019", # specify the layer to read in for income (from exploration)
-               quiet = TRUE)
+               quiet = TRUE) %>% 
+              # only keep metadata related to income
+              filter(str_detect(Full_Name, regex("INCOME", ignore_case = TRUE)))
 
 # Hint: You have to combine the geometry with the attributes to get a feature layer that sf can use. I will do this in section 0.2
 
@@ -184,17 +188,39 @@ We will join on the geo_id
 `left_join` instead of `st_join` because income is not spatially enabled using `st_transform`?
 
 
-
-
 ```{r}
-# left join
+# whittle down metadata
+meta_whittled <- meta %>% 
+      mutate(
+    full_name_clean = make_clean_names(Full_Name)) %>% 
+    filter(str_detect(
+    full_name_clean,
+    regex(
+      "median_family_income_in_the_past_12_months_in_2019_inflation_adjusted_dollars_median_family_income_in_the_past_12_months_in_2019_inflation_adjusted_dollars_families_estimate",
+      ignore_case = TRUE)))
+ column_to_keep <- meta_whittled$Short_Name
+column_to_keep
+
+# only keep columns of interest in income
+income_filtered <- income %>%
+  dplyr::select(GEOID, all_of(column_to_keep)) %>%
+  rename(median_income_inflation_adj = all_of(column_to_keep))
 
 
+# left join to make socioeconomic (se) df
+se <- income_filtered %>% 
+  left_join(geo_layer, by = "GEOID") %>% 
+  relocate(Shape, .after = GEOID) 
 
-# ensure same crs
+class(se) # not spatial!
 
-
-
+# make spatial again
+se <- se %>% 
+  st_as_sf() %>% 
+  st_make_valid() %>% 
+  st_transform("EPSG:4326") # to match
+class(se) # now spatial!
+# st_crs(se) # EPSG:4326 
 ```
 
 
